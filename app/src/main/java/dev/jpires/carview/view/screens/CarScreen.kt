@@ -1,7 +1,9 @@
 package dev.jpires.carview.view.screens
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
@@ -14,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,7 +60,6 @@ import androidx.navigation.NavController
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.jpires.carview.view.navigation.Screen
 import dev.jpires.carview.viewmodel.ViewModel
-import java.util.logging.Logger
 
 @Composable
 fun CarScreen(viewModel: ViewModel, navController: NavController) {
@@ -239,7 +239,8 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
         animationSpec = tween(500)
     )
 
-    val leftText = rememberSaveable { mutableStateOf(viewModel.formatDuration(playbackPosition.value)) }
+    val leftText =
+        rememberSaveable { mutableStateOf(viewModel.formatDuration(playbackPosition.value)) }
 
     Box(
         modifier = modifier
@@ -274,7 +275,9 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = if (movingSlider.value) leftText.value else viewModel.formatDuration(playbackPosition.value),
+                    text = if (movingSlider.value) leftText.value else viewModel.formatDuration(
+                        playbackPosition.value
+                    ),
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -295,14 +298,40 @@ fun SongControlsLandscape(modifier: Modifier = Modifier, viewModel: ViewModel) {
     val isShuffled by viewModel.isShuffled.collectAsState()
     val isFavourite by viewModel.isFavourite.collectAsState()
 
-    val animatedFavourite by animateColorAsState(
+    val animatedFavouriteColour by animateColorAsState(
         targetValue = if (isFavourite) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
-        label = "tint"
+        label = "tint",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessVeryLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
     )
 
-    val animatedShuffle by animateColorAsState(
+    val animatedFavouriteSize by animateFloatAsState(
+        targetValue = if (isFavourite) 64f else 60f,
+        label = "size",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
+    )
+
+    val animatedShuffleColour by animateColorAsState(
         targetValue = if (isShuffled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
-        label = "tint"
+        label = "tint",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessVeryLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
+    )
+
+    val animatedShuffleSize by animateFloatAsState(
+        targetValue = if (isShuffled) 64f else 60f,
+        label = "size",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
     )
 
     Box(
@@ -313,12 +342,17 @@ fun SongControlsLandscape(modifier: Modifier = Modifier, viewModel: ViewModel) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CarButton(
-                icon = Icons.Rounded.Favorite,
-                modifier = Modifier.size(64.dp),
-                tint = animatedFavourite
+            Box(
+                modifier = Modifier.size(70.dp),
+                contentAlignment = Alignment.Center
             ) {
-                viewModel.toggleFavourite()
+                CarButton(
+                    icon = Icons.Rounded.Favorite,
+                    modifier = Modifier.size(animatedFavouriteSize.dp),
+                    tint = animatedFavouriteColour
+                ) {
+                    viewModel.toggleFavourite()
+                }
             }
             Spacer(modifier = Modifier.width(64.dp))
             CarButton(
@@ -345,13 +379,18 @@ fun SongControlsLandscape(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 viewModel.skipNext()
             }
             Spacer(modifier = Modifier.width(64.dp))
-            CarButton(
-                icon = Icons.Rounded.Shuffle,
-                modifier = Modifier.size(64.dp),
-                enabled = viewModel.canToggleShuffle(),
-                tint = animatedShuffle
+            Box(
+                modifier = Modifier.size(70.dp),
+                contentAlignment = Alignment.Center
             ) {
-                viewModel.toggleShuffle()
+                CarButton(
+                    icon = Icons.Rounded.Shuffle,
+                    modifier = Modifier.size(animatedShuffleSize.dp),
+                    enabled = viewModel.canToggleShuffle(),
+                    tint = animatedShuffleColour
+                ) {
+                    viewModel.toggleShuffle()
+                }
             }
         }
     }
@@ -400,14 +439,40 @@ fun SongExtras(modifier: Modifier = Modifier, viewModel: ViewModel) {
     val isShuffled by viewModel.isShuffled.collectAsState()
     val isFavourite by viewModel.isFavourite.collectAsState()
 
-    val animatedFavourite by animateColorAsState(
+    val animatedFavouriteColour by animateColorAsState(
         targetValue = if (isFavourite) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
-        label = "tint"
+        label = "tint",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessVeryLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
     )
 
-    val animatedShuffle by animateColorAsState(
+    val animatedFavouriteSize by animateFloatAsState(
+        targetValue = if (isFavourite) 64f else 60f,
+        label = "size",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
+    )
+
+    val animatedShuffleColour by animateColorAsState(
         targetValue = if (isShuffled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
-        label = "tint"
+        label = "tint",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessVeryLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
+    )
+
+    val animatedShuffleSize by animateFloatAsState(
+        targetValue = if (isShuffled) 64f else 60f,
+        label = "size",
+        animationSpec = spring(
+            stiffness = Spring.StiffnessLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        )
     )
 
     Box(
@@ -419,21 +484,31 @@ fun SongExtras(modifier: Modifier = Modifier, viewModel: ViewModel) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CarButton(
-                icon = Icons.Rounded.Favorite,
-                modifier = Modifier.size(64.dp),
-                tint = animatedFavourite
+            Box(
+                modifier = Modifier.size(70.dp),
+                contentAlignment = Alignment.Center
             ) {
-                viewModel.toggleFavourite()
+                CarButton(
+                    icon = Icons.Rounded.Favorite,
+                    modifier = Modifier.size(animatedFavouriteSize.dp),
+                    tint = animatedFavouriteColour
+                ) {
+                    viewModel.toggleFavourite()
+                }
             }
             Spacer(modifier = Modifier.width(64.dp))
-            CarButton(
-                icon = Icons.Rounded.Shuffle,
-                modifier = Modifier.size(64.dp),
-                enabled = viewModel.canToggleShuffle(),
-                tint = animatedShuffle
+            Box(
+                modifier = Modifier.size(70.dp),
+                contentAlignment = Alignment.Center
             ) {
-                viewModel.toggleShuffle()
+                CarButton(
+                    icon = Icons.Rounded.Shuffle,
+                    modifier = Modifier.size(animatedShuffleSize.dp),
+                    enabled = viewModel.canToggleShuffle(),
+                    tint = animatedShuffleColour
+                ) {
+                    viewModel.toggleShuffle()
+                }
             }
         }
     }
