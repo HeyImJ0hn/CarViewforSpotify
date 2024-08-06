@@ -1,5 +1,9 @@
 package dev.jpires.carview.view.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,9 +38,16 @@ import dev.jpires.carview.R
 import dev.jpires.carview.ui.theme.CarViewForSpotifyTheme
 import dev.jpires.carview.view.navigation.Screen
 import dev.jpires.carview.viewmodel.ViewModel
+import java.util.logging.Logger
 
 @Composable
 fun LoginScreen(viewModel: ViewModel, navController: NavController) {
+    val isConnected = viewModel.isConnected.collectAsState()
+
+    if (isConnected.value) {
+        navController.navigate(Screen.CarScreen.route)
+    }
+
     CarViewForSpotifyTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             LoginScreenStructure(viewModel, navController)
@@ -99,6 +113,12 @@ fun LoginText(modifier: Modifier = Modifier) {
 
 @Composable
 fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel, navController: NavController) {
+//    val authToken by viewModel.authToken.collectAsState()
+
+//    if (authToken != null) {
+//        navController.navigate(Screen.CarScreen.route)
+//    }
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -107,8 +127,8 @@ fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel, na
             modifier = Modifier.height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
             onClick = {
-                /* TODO: Implement Spotify Connection */
-                navController.navigate(Screen.CarScreen.route)
+//                viewModel.initiateAuthFlow()
+                viewModel.connectToRemote()
             }
         ) {
             Row(

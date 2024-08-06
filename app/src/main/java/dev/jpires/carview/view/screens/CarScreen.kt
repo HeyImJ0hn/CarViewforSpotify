@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
@@ -26,6 +27,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +85,8 @@ fun CarViewStructure(viewModel: ViewModel) {
 
 @Composable
 fun CurrentlyPlaying(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val track by viewModel.track.collectAsState()
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -91,13 +97,13 @@ fun CurrentlyPlaying(modifier: Modifier = Modifier, viewModel: ViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Slow J",
+                text = track?.artist?.name ?: "No Artist",
                 fontWeight = FontWeight.Black,
                 fontSize = 32.sp,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Sem Ti",
+                text = track?.name ?: "No Song",
                 fontWeight = FontWeight.Normal,
                 fontSize = 24.sp,
                 textAlign = TextAlign.Center
@@ -118,13 +124,23 @@ fun CarScreenMiddle(modifier: Modifier = Modifier, viewModel: ViewModel) {
 
 @Composable
 fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val track by viewModel.track.collectAsState()
+    val playbackPosition = viewModel.playbackPosition.collectAsState()
+
+    val sliderPosition = if (track != null) {
+        playbackPosition.value.toFloat() / track!!.duration.toFloat()
+    } else {
+        0f
+    }
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column {
             Slider(
-                value = .5f,
+                value = sliderPosition,
+                valueRange = 0f..1f,
                 onValueChange = { /*TODO*/ },
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
@@ -141,12 +157,12 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
 
             ) {
                 Text(
-                    text = "0:00",
+                    text = viewModel.formatDuration(playbackPosition.value),
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "3:00",
+                    text = viewModel.formatDuration(track?.duration ?: 0),
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -157,6 +173,8 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
 
 @Composable
 fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val isPaused = viewModel.isPaused.collectAsState()
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -167,17 +185,17 @@ fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             CarButton(icon = Icons.Rounded.SkipPrevious, modifier = Modifier.size(120.dp)) {
-//                viewModel.skipToPrevious()
+                viewModel.skipPrevious()
             }
             CarButton(
-                icon = Icons.Rounded.PlayCircle,
+                icon = if (isPaused.value) Icons.Rounded.PlayCircle else Icons.Rounded.PauseCircle,
                 tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(120.dp)
             ) {
-//                  viewModel.playPause()
+                  viewModel.togglePlayPause()
             }
             CarButton(icon = Icons.Rounded.SkipNext, modifier = Modifier.size(120.dp)) {
-//                viewModel.skipToNext()
+                viewModel.skipNext()
             }
         }
     }

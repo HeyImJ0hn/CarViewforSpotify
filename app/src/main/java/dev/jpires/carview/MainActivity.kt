@@ -1,5 +1,7 @@
 package dev.jpires.carview
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,11 +21,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        repository = Repository(applicationContext)
+        repository = Repository(this)
         viewModel = ViewModelProvider(this, ViewModelFactory(repository))[ViewModel::class.java]
 
         setContent {
             NavigationHost(viewModel)
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        viewModel.handleActivityResult(requestCode, resultCode, data)
     }
 }
