@@ -82,4 +82,6 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.spotify.auth)
     implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.core.splashscreen)
 }

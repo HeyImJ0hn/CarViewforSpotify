@@ -1,9 +1,6 @@
 package dev.jpires.carview.view.screens
 
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,34 +25,42 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import dev.jpires.carview.R
 import dev.jpires.carview.ui.theme.CarViewForSpotifyTheme
 import dev.jpires.carview.view.navigation.Screen
 import dev.jpires.carview.viewmodel.ViewModel
-import java.util.logging.Logger
 
 @Composable
 fun LoginScreen(viewModel: ViewModel, navController: NavController) {
-    val isConnected = viewModel.isConnected.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
+    val isConnecting by viewModel.isConnecting.collectAsState()
 
-    if (isConnected.value) {
+    if (isConnected) {
         navController.navigate(Screen.CarScreen.route)
     }
 
-    CarViewForSpotifyTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            LoginScreenStructure(viewModel, navController)
-        }
+    if (isConnecting)
+        LoadingDialog()
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        LoginScreenStructure(viewModel, navController)
     }
 }
 
@@ -65,7 +74,7 @@ fun LoginScreenStructure(viewModel: ViewModel, navController: NavController) {
     ) {
         AppLogo(Modifier.weight(1f))
         LoginText(Modifier.weight(1f))
-        ConnectSpotifyButton(Modifier.weight(1f), viewModel, navController)
+        ConnectSpotifyButton(Modifier.weight(1f), viewModel)
     }
 }
 
@@ -112,12 +121,8 @@ fun LoginText(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel, navController: NavController) {
-//    val authToken by viewModel.authToken.collectAsState()
-
-//    if (authToken != null) {
-//        navController.navigate(Screen.CarScreen.route)
-//    }
+fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    var showDialog by rememberSaveable { mutableStateOf(false) }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -125,10 +130,16 @@ fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel, na
     ) {
         Button(
             modifier = Modifier.height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                disabledContainerColor = Color.Gray
+            ),
+            enabled = true,
             onClick = {
-//                viewModel.initiateAuthFlow()
-                viewModel.connectToRemote()
+                if (!viewModel.isSpotifyInstalled())
+                    showDialog = true
+                else
+                    viewModel.connectToRemote()
             }
         ) {
             Row(
@@ -150,4 +161,75 @@ fun ConnectSpotifyButton(modifier: Modifier = Modifier, viewModel: ViewModel, na
             }
         }
     }
+
+    if (showDialog) {
+        Alert(
+            text = "Spotify is not installed. Do you want to install it from the Play Store?",
+            dismissButtonText = "No",
+            confirmButtonText = "Yes",
+            icon = Icons.Rounded.Storefront,
+            onDismiss = { showDialog = false }) {
+            showDialog = false
+            viewModel.connectToRemote()
+        }
+    }
+
+}
+
+@Composable
+fun LoadingDialog() {
+    Dialog(
+        onDismissRequest = { /* do nothing */ },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.secondary,
+                strokeWidth = 5.dp,
+                trackColor = Color.Transparent,
+                strokeCap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Composable
+fun Alert(text: String, dismissButtonText: String, confirmButtonText: String, icon: ImageVector, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        icon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = icon.name,
+                tint = MaterialTheme.colorScheme.secondary
+            )
+        },
+        onDismissRequest = onDismiss,
+        text = {
+            Text(
+                text = text,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                )
+            ) {
+                Text(dismissButtonText, color = MaterialTheme.colorScheme.onBackground)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+            ) {
+                Text(confirmButtonText, color = MaterialTheme.colorScheme.secondary)
+            }
+        }
+    )
 }

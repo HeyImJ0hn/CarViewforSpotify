@@ -1,5 +1,12 @@
 package dev.jpires.carview.view.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.MarqueeSpacing
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,17 +26,25 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,20 +54,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import dev.jpires.carview.ui.theme.CarViewForSpotifyTheme
+import dev.jpires.carview.view.navigation.Screen
 import dev.jpires.carview.viewmodel.ViewModel
 
 @Composable
 fun CarScreen(viewModel: ViewModel, navController: NavController) {
-    CarViewForSpotifyTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            CarViewStructure(viewModel)
-        }
+    val isConnected by viewModel.isConnected.collectAsState()
+
+    if (!isConnected)
+        navController.navigate(Screen.LoginScreen.route)
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        CarViewStructure(viewModel)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarViewStructure(viewModel: ViewModel) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showBottomSheet by rememberSaveable { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -69,6 +91,7 @@ fun CarViewStructure(viewModel: ViewModel) {
                 icon = Icons.Rounded.Settings,
                 modifier = Modifier.size(32.dp)
             ) {
+                showBottomSheet = true
                 // viewModel.navigateToSettings()
             }
         }
@@ -81,8 +104,16 @@ fun CarViewStructure(viewModel: ViewModel) {
             SongExtras(Modifier.weight(1f), viewModel)
         }
     }
+
+    if (showBottomSheet)
+        BottomSheet(
+            onDismiss = { showBottomSheet = false },
+            viewModel = viewModel,
+            sheetState = sheetState
+        )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CurrentlyPlaying(modifier: Modifier = Modifier, viewModel: ViewModel) {
     val track by viewModel.track.collectAsState()
@@ -100,13 +131,25 @@ fun CurrentlyPlaying(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 text = track?.artist?.name ?: "No Artist",
                 fontWeight = FontWeight.Black,
                 fontSize = 32.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.basicMarquee(
+                    animationMode = MarqueeAnimationMode.Immediately,
+                    delayMillis = 0,
+                    spacing = MarqueeSpacing(32.dp),
+                    iterations = Int.MAX_VALUE
+                )
             )
             Text(
                 text = track?.name ?: "No Song",
                 fontWeight = FontWeight.Normal,
                 fontSize = 24.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.basicMarquee(
+                    animationMode = MarqueeAnimationMode.Immediately,
+                    delayMillis = 0,
+                    spacing = MarqueeSpacing(32.dp),
+                    iterations = Int.MAX_VALUE
+                )
             )
         }
     }
@@ -133,21 +176,38 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
         0f
     }
 
+    val movingSlider = rememberSaveable { mutableStateOf(false) }
+    val sliderPos = rememberSaveable { mutableFloatStateOf(sliderPosition) }
+
+    val pos by animateFloatAsState(
+        targetValue = sliderPosition,
+        label = "slider",
+        animationSpec = tween(500)
+    )
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column {
             Slider(
-                value = sliderPosition,
+                value = if (movingSlider.value) sliderPos.floatValue else pos,
                 valueRange = 0f..1f,
-                onValueChange = { /*TODO*/ },
+                onValueChange = {
+                    movingSlider.value = true
+                    sliderPos.floatValue = it
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
                     thumbColor = MaterialTheme.colorScheme.secondary,
                     activeTrackColor = MaterialTheme.colorScheme.secondary,
                     inactiveTrackColor = MaterialTheme.colorScheme.onBackground
-                )
+                ),
+                onValueChangeFinished = {
+                    movingSlider.value = false
+                    if (viewModel.canSeek() && track != null)
+                        viewModel.seekTo((sliderPos.floatValue * track!!.duration).toLong())
+                }
             )
             Row(
                 modifier = Modifier
@@ -184,7 +244,11 @@ fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CarButton(icon = Icons.Rounded.SkipPrevious, modifier = Modifier.size(120.dp)) {
+            CarButton(
+                icon = Icons.Rounded.SkipPrevious,
+                modifier = Modifier.size(120.dp),
+                enabled = viewModel.canSkipPrevious()
+            ) {
                 viewModel.skipPrevious()
             }
             CarButton(
@@ -194,7 +258,11 @@ fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
             ) {
                   viewModel.togglePlayPause()
             }
-            CarButton(icon = Icons.Rounded.SkipNext, modifier = Modifier.size(120.dp)) {
+            CarButton(
+                icon = Icons.Rounded.SkipNext,
+                modifier = Modifier.size(120.dp),
+                enabled = viewModel.canSkipNext()
+            ) {
                 viewModel.skipNext()
             }
         }
@@ -203,6 +271,19 @@ fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
 
 @Composable
 fun SongExtras(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val isShuffled by viewModel.isShuffled.collectAsState()
+    val isFavourite by viewModel.isFavourite.collectAsState()
+
+    val animatedFavourite by animateColorAsState(
+        targetValue = if (isFavourite) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+        label = "tint"
+    )
+
+    val animatedShuffle by animateColorAsState(
+        targetValue = if (isShuffled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+        label = "tint"
+    )
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -212,12 +293,21 @@ fun SongExtras(modifier: Modifier = Modifier, viewModel: ViewModel) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CarButton(icon = Icons.Rounded.Favorite, modifier = Modifier.size(64.dp)) {
-//                viewModel.toggleFavorite()
+            CarButton(
+                icon = Icons.Rounded.Favorite,
+                modifier = Modifier.size(64.dp),
+                tint = animatedFavourite
+            ) {
+                viewModel.toggleFavourite()
             }
             Spacer(modifier = Modifier.width(64.dp))
-            CarButton(icon = Icons.Rounded.Shuffle, modifier = Modifier.size(64.dp)) {
-//                  viewModel.toggleShuffle()
+            CarButton(
+                icon = Icons.Rounded.Shuffle,
+                modifier = Modifier.size(64.dp),
+                enabled = viewModel.canToggleShuffle(),
+                tint = animatedShuffle
+            ) {
+                  viewModel.toggleShuffle()
             }
         }
     }
@@ -228,10 +318,12 @@ fun CarButton(
     modifier: Modifier = Modifier,
     icon: ImageVector,
     tint: Color = MaterialTheme.colorScheme.onBackground,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
     ) {
         Icon(
@@ -240,5 +332,20 @@ fun CarButton(
             modifier = modifier,
             tint = tint
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BottomSheet(onDismiss: () -> Unit, viewModel: ViewModel, sheetState: SheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        tonalElevation = 16.dp
+    ) {
+        Column(
+        ) {
+            SettingsSheet(viewModel = viewModel)
+        }
     }
 }

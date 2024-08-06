@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import dev.jpires.carview.model.data.ThemeMode
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color.White,
@@ -23,7 +24,7 @@ private val DarkColorScheme = darkColorScheme(
     background = SpotifyBlack,
     onBackground = Color.White,
     surface = SpotifyBlack,
-    onSurface = Color.White
+    onSurface = Color.White,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -33,7 +34,8 @@ private val LightColorScheme = lightColorScheme(
     background = Color.White,
     onBackground = Color.Black,
     surface = Color.White,
-    onSurface = Color.Black
+    onSurface = Color.Black,
+    surfaceTint = Color.White
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -48,9 +50,15 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun CarViewForSpotifyTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
     val colorScheme = when {
         darkTheme -> DarkColorScheme
         else -> LightColorScheme

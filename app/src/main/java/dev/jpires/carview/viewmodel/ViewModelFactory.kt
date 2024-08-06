@@ -1,7 +1,7 @@
 package dev.jpires.carview.viewmodel
 
 import androidx.lifecycle.ViewModelProvider
-import dev.jpires.carview.model.Repository
+import dev.jpires.carview.model.repository.Repository
 
 class ViewModelFactory(private val repository: Repository) : ViewModelProvider.Factory {
     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
