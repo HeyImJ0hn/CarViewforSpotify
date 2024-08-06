@@ -16,12 +16,10 @@ navigationCompose = "2.7.7"
 material = "1.6.8"
 datastore = "1.1.1"
 splash = "1.0.1"
-coreKtxVersion = "1.10.3"
-material3Android = "1.2.1"
+adaptive = "1.0.0-beta04"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-json = { module = "org.json:json", version.ref = "json" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 spotify-auth = { module = "com.spotify.android:auth", version.ref = "spotifyAuth" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
@@ -43,6 +41,7 @@ androidx-material-icons-extended = { module = "androidx.compose.material:materia
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splash" }
+androidx-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "adaptive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

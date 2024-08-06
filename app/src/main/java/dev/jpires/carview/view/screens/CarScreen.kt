@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,12 +38,12 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -54,24 +56,74 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.window.core.layout.WindowWidthSizeClass
 import dev.jpires.carview.view.navigation.Screen
 import dev.jpires.carview.viewmodel.ViewModel
+import java.util.logging.Logger
 
 @Composable
 fun CarScreen(viewModel: ViewModel, navController: NavController) {
     val isConnected by viewModel.isConnected.collectAsState()
+    val windowSize = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
 
     if (!isConnected)
         navController.navigate(Screen.LoginScreen.route)
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        CarViewStructure(viewModel)
+        if (windowSize != WindowWidthSizeClass.EXPANDED)
+            CarViewPortraitStructure(viewModel)
+        else
+            CarViewLandscapeStructure(viewModel)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CarViewStructure(viewModel: ViewModel) {
+fun CarViewLandscapeStructure(viewModel: ViewModel) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showBottomSheet by rememberSaveable { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+    ) {
+        // Settings Button
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(8.dp)
+        ) {
+            CarButton(
+                icon = Icons.Rounded.Settings,
+                modifier = Modifier.size(32.dp)
+            ) {
+                showBottomSheet = true
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween // Ensure space between items
+        ) {
+            CurrentlyPlaying(Modifier.weight(0.2f), viewModel)
+            CarScreenMiddle(Modifier.weight(0.5f), viewModel)
+        }
+    }
+
+    if (showBottomSheet)
+        BottomSheet(
+            onDismiss = { showBottomSheet = false },
+            viewModel = viewModel,
+            sheetState = sheetState
+        )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CarViewPortraitStructure(viewModel: ViewModel) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -92,7 +144,6 @@ fun CarViewStructure(viewModel: ViewModel) {
                 modifier = Modifier.size(32.dp)
             ) {
                 showBottomSheet = true
-                // viewModel.navigateToSettings()
             }
         }
         Column(
@@ -157,10 +208,13 @@ fun CurrentlyPlaying(modifier: Modifier = Modifier, viewModel: ViewModel) {
 
 @Composable
 fun CarScreenMiddle(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val windowSize = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
+
     Box(modifier = modifier) {
         Column {
             SongProgress(viewModel = viewModel)
-            SongControls(viewModel = viewModel)
+            if (windowSize != WindowWidthSizeClass.EXPANDED) SongControlsPortrait(viewModel = viewModel)
+            else SongControlsLandscape(viewModel = viewModel)
         }
     }
 }
@@ -185,8 +239,11 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
         animationSpec = tween(500)
     )
 
+    val leftText = rememberSaveable { mutableStateOf(viewModel.formatDuration(playbackPosition.value)) }
+
     Box(
-        modifier = modifier,
+        modifier = modifier
+            .navigationBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
         Column {
@@ -196,6 +253,7 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 onValueChange = {
                     movingSlider.value = true
                     sliderPos.floatValue = it
+                    leftText.value = viewModel.formatDuration((it * track!!.duration).toLong())
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
@@ -214,10 +272,9 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
-
             ) {
                 Text(
-                    text = viewModel.formatDuration(playbackPosition.value),
+                    text = if (movingSlider.value) leftText.value else viewModel.formatDuration(playbackPosition.value),
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -232,7 +289,76 @@ fun SongProgress(modifier: Modifier = Modifier, viewModel: ViewModel) {
 }
 
 @Composable
-fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
+fun SongControlsLandscape(modifier: Modifier = Modifier, viewModel: ViewModel) {
+    val isPaused = viewModel.isPaused.collectAsState()
+
+    val isShuffled by viewModel.isShuffled.collectAsState()
+    val isFavourite by viewModel.isFavourite.collectAsState()
+
+    val animatedFavourite by animateColorAsState(
+        targetValue = if (isFavourite) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+        label = "tint"
+    )
+
+    val animatedShuffle by animateColorAsState(
+        targetValue = if (isShuffled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+        label = "tint"
+    )
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CarButton(
+                icon = Icons.Rounded.Favorite,
+                modifier = Modifier.size(64.dp),
+                tint = animatedFavourite
+            ) {
+                viewModel.toggleFavourite()
+            }
+            Spacer(modifier = Modifier.width(64.dp))
+            CarButton(
+                icon = Icons.Rounded.SkipPrevious,
+                modifier = Modifier.size(120.dp),
+                enabled = viewModel.canSkipPrevious()
+            ) {
+                viewModel.skipPrevious()
+            }
+            Spacer(modifier = Modifier.width(32.dp))
+            CarButton(
+                icon = if (isPaused.value) Icons.Rounded.PlayCircle else Icons.Rounded.PauseCircle,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(120.dp)
+            ) {
+                viewModel.togglePlayPause()
+            }
+            Spacer(modifier = Modifier.width(32.dp))
+            CarButton(
+                icon = Icons.Rounded.SkipNext,
+                modifier = Modifier.size(120.dp),
+                enabled = viewModel.canSkipNext()
+            ) {
+                viewModel.skipNext()
+            }
+            Spacer(modifier = Modifier.width(64.dp))
+            CarButton(
+                icon = Icons.Rounded.Shuffle,
+                modifier = Modifier.size(64.dp),
+                enabled = viewModel.canToggleShuffle(),
+                tint = animatedShuffle
+            ) {
+                viewModel.toggleShuffle()
+            }
+        }
+    }
+}
+
+@Composable
+fun SongControlsPortrait(modifier: Modifier = Modifier, viewModel: ViewModel) {
     val isPaused = viewModel.isPaused.collectAsState()
 
     Box(
@@ -256,7 +382,7 @@ fun SongControls(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(120.dp)
             ) {
-                  viewModel.togglePlayPause()
+                viewModel.togglePlayPause()
             }
             CarButton(
                 icon = Icons.Rounded.SkipNext,
@@ -307,7 +433,7 @@ fun SongExtras(modifier: Modifier = Modifier, viewModel: ViewModel) {
                 enabled = viewModel.canToggleShuffle(),
                 tint = animatedShuffle
             ) {
-                  viewModel.toggleShuffle()
+                viewModel.toggleShuffle()
             }
         }
     }

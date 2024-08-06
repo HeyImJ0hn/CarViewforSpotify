@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
+import androidx.window.core.layout.WindowWidthSizeClass
 import dev.jpires.carview.R
 import dev.jpires.carview.ui.theme.CarViewForSpotifyTheme
 import dev.jpires.carview.view.navigation.Screen
@@ -60,21 +62,45 @@ fun LoginScreen(viewModel: ViewModel, navController: NavController) {
         LoadingDialog()
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        LoginScreenStructure(viewModel, navController)
+        LoginScreenStructure(viewModel)
     }
 }
 
 @Composable
-fun LoginScreenStructure(viewModel: ViewModel, navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        AppLogo(Modifier.weight(1f))
-        LoginText(Modifier.weight(1f))
-        ConnectSpotifyButton(Modifier.weight(1f), viewModel)
+fun LoginScreenStructure(viewModel: ViewModel) {
+    val windowSize = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
+
+    if (windowSize != WindowWidthSizeClass.EXPANDED) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppLogo(Modifier.weight(1f))
+            LoginText(Modifier.weight(1f))
+            ConnectSpotifyButton(Modifier.weight(1f), viewModel)
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp).weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                AppLogo()
+            }
+            Column(
+                modifier = Modifier.padding(16.dp).weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                LoginText(Modifier.weight(1f))
+                ConnectSpotifyButton(Modifier.weight(1f), viewModel)
+            }
+        }
     }
 }
 
